@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# dbt: the models come from contoso-data-product and are rendered from a
+# manifest built at `make manifest`. Only the profiles are ours.
+dbt/*/target/
+dbt/*/logs/
+dbt/*/dbt_packages/
+
+# Where the platform mounts the product's outputs.
+out/
+product_snapshot.json
+state.json

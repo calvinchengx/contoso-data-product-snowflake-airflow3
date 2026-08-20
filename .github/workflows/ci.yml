@@ -1,0 +1,46 @@
+# The leaf's own tests: no platform, no emulator, no Docker.
+#
+# THE PIPELINE IS NOT RUN HERE. That needs the emulator, four vendors and an
+# Airflow stack, and it belongs in snowflake-platform-airflow3's `make verify`.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
+        with:
+          version: "0.12.3"
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      # --frozen: the lockfile is the claim. A CI run that silently resolved a
+      # different dependency set would be testing something no one else has.
+      - run: uv sync --frozen --group dev --group dbt
+      - run: uv run --frozen --no-sync --group dev ruff check .
+      # THE MANIFESTS ARE BUILT HERE, and that is not setup -- it is half the
+      # test. `scripts/manifest.py` refuses to stamp a manifest missing a test
+      # that exists as a file, so a core release that changed the model set
+      # fails HERE rather than rendering a graph with a hole in it.
+      - name: build the dbt manifests
+        run: uv run --frozen --no-sync --group dbt python scripts/manifest.py
+      - name: tests
+        run: uv run --frozen --no-sync --group dev pytest tests -q
+      # A SKIPPED TEST IS NOT A PASSING ONE. The graph tests skip when the
+      # manifests are absent, which is right for a developer and wrong for CI:
+      # the whole-suite-test-task guard is what stands between this cell and
+      # G29, and a CI run that quietly skipped it would prove nothing.
+      - name: the graph tests actually ran
+        run: |
+          uv run --frozen --no-sync --group dev pytest tests -q -m render 2>&1 | tee /tmp/out
+          grep -qE "^[0-9]+ passed" /tmp/out
+          grep -qv "no tests ran" /tmp/out
