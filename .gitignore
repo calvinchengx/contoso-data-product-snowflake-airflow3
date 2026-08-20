@@ -14,3 +14,8 @@ dbt/*/dbt_packages/
 out/
 product_snapshot.json
 state.json
+
+# `make show-product` stages the core's dbt projects here so they can be read
+# without cloning contoso-data-product. Never edited, never committed: an
+# edit here is a fork of the product that would be silently ignored.
+product/
