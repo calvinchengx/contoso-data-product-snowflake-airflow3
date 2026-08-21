@@ -203,16 +203,20 @@ def contoso_daily():
         from contoso_sf_airflow.target import DATABASE, SCHEMA_GOLD, SCHEMA_SILVER, dbt_env
 
         env = dbt_env(SCHEMA_GOLD)
-        env["CONTOSO_SILVER_DATABASE"] = DATABASE
-        env["CONTOSO_SILVER_SCHEMA"] = SCHEMA_SILVER
-        # LAKEHOUSE_ID IS A FABRIC NAME AND THIS IS NOT FABRIC, but core's gold
-        # sources.yml spells the silver database
-        # `env_var('CONTOSO_SILVER_DATABASE', env_var('LAKEHOUSE_ID'))`, and
-        # Jinja evaluates the DEFAULT EAGERLY -- so the fallback is read whether
-        # or not the first name is set, and a Fabric-only variable becomes
-        # mandatory on every engine. Without it dbt fails while PARSING, which
-        # the Tasks cell recorded as a dialect gap for months.
-        env["LAKEHOUSE_ID"] = DATABASE
+        # DBT_-PREFIXED SINCE CORE v0.6.0. Snowflake's dbt Projects refuse any
+        # env var key that is not UPPERCASE and DBT_-prefixed -- enforced on
+        # every run -- so the names this used to set could not be supplied to a
+        # dbt project on this very engine. The Tasks cell hit that wall first;
+        # core moved the names so gold is portable, and this cell follows.
+        env["DBT_SILVER_DATABASE"] = DATABASE
+        env["DBT_SILVER_SCHEMA"] = SCHEMA_SILVER
+        # LAKEHOUSE_ID IS GONE, not renamed. It was only ever set because core's
+        # gold spelled the silver database
+        # `env_var('CONTOSO_SILVER_DATABASE', env_var('LAKEHOUSE_ID'))` and
+        # Jinja evaluates the DEFAULT EAGERLY, so a Fabric-only variable became
+        # mandatory on every engine. Core stopped nesting it, and the parse
+        # failure that cost the Tasks cell months of a wrong explanation --
+        # recorded there as a dialect gap -- cannot happen again.
         return env
 
     ctx = provision()
