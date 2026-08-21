@@ -72,18 +72,24 @@ def build(name: str, project: Path) -> tuple[int, int]:
 
     # PARSE-TIME PLACEHOLDERS, satisfied rather than fixed upstream.
     #
-    # Gold's sources.yml reads
-    #   database: "{{ env_var('CONTOSO_SILVER_DATABASE', env_var('LAKEHOUSE_ID')) }}"
-    # and Jinja evaluates the DEFAULT EAGERLY, so LAKEHOUSE_ID -- a Fabric name,
-    # on a Snowflake cell -- is required even when the first is set. The shared
-    # project is consumed by four platforms; changing it to suit one consumer's
-    # renderer is the wrong direction, and `dbt parse` does not connect, so
-    # these values only have to exist. The REAL ones reach the tasks at run time.
+    # Gold's sources.yml reads `env_var('DBT_SILVER_DATABASE')`, and `dbt parse`
+    # does not connect, so these values only have to EXIST. The real ones reach
+    # the tasks at run time.
+    #
+    # THE UPSTREAM FIX HAPPENED. This block used to also set LAKEHOUSE_ID -- a
+    # Fabric name, on a Snowflake cell -- because gold's default was
+    # `env_var('CONTOSO_SILVER_DATABASE', env_var('LAKEHOUSE_ID'))` and Jinja
+    # evaluates a default EAGERLY, making it mandatory everywhere. The comment
+    # here argued that changing a shared project to suit one consumer's renderer
+    # was the wrong direction, and that was right about the renderer and wrong
+    # about the project: core v0.6.0 stopped nesting the default AND moved the
+    # names, because Snowflake's dbt Projects refuse any key that is not
+    # UPPERCASE and DBT_-prefixed -- so the old spelling could not run there at
+    # all. The placeholder is gone because the thing needing it is gone.
     env = os.environ.copy()
     for k, v in {
-        "CONTOSO_SILVER_DATABASE": "TEST_DB",
-        "CONTOSO_SILVER_SCHEMA": "PUBLIC",
-        "LAKEHOUSE_ID": "TEST_DB",
+        "DBT_SILVER_DATABASE": "TEST_DB",
+        "DBT_SILVER_SCHEMA": "PUBLIC",
         "DBT_BRONZE_SCHEMA": "PUBLIC",
         "SNOWFLAKE_ACCOUNT": "test",
         "SNOWFLAKE_USER": "admin",
